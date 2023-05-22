@@ -134,9 +134,7 @@ mag_2d = fig.add_subplot(2, 2, 4)
 
 
 
-ani_acc3d, = FuncAnimation(fig, update_3d, interval=10, blit=True)
-ani_acc2d, = FuncAnimation(fig, update_2d, interval=10, blit=True)
-# ani_mag2d = FuncAnimation(fig, update_mag2d, interval=10)
-
+ani_acc3d = FuncAnimation(fig, update_3d, interval=10)
+ani_acc2d = FuncAnimation(fig, update_2d, interval=10)
 
 plt.show()
