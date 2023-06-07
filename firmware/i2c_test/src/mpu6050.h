@@ -71,7 +71,7 @@
 */
 #define GYRO_CONFIG_REG 0x1B
 
-uint8_t MPU_init(const struct device *i2c_dev);
+uint8_t MPU_init(const struct device *i2c_device);
 uint8_t MPU_read_acc(int16_t output[]);
 uint8_t MPU_read_gyro(int16_t output[]);
 
