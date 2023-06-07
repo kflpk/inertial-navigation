@@ -35,6 +35,15 @@ uint8_t MPU_init(const struct device *i2c_device) {
     i2c_buffer[1] = 1;
     i2c_write(i2c_dev, i2c_buffer, 2, MPU_i2c_addr);
 
+    // Enable I2C pass-through mode
+    i2c_buffer[0] = INT_PIN_CFG_REG;
+    i2c_buffer[1] = (1 << I2C_BYPASS_EN);
+    i2c_write(i2c_dev, i2c_buffer, 2, MPU_i2c_addr);
+
+    i2c_buffer[0] = USER_CTRL_REG;
+    i2c_buffer[1] = 0;
+    i2c_write(i2c_dev, i2c_buffer, 2, MPU_i2c_addr);
+
     return 0;
 }
 

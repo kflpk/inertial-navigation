@@ -1,12 +1,13 @@
 #include "hmc5883l.h"
 #include <zephyr/logging/log.h>
 
+//FIX: I2C communication works but data doesn't update
+// TODO: Try sending 3D and 3C as a first packet before transmitting data
+
 static struct device *i2c_dev;
-static uint8_t i2c_buffer[6];
+static uint8_t i2c_buffer[64];
 
 LOG_MODULE_REGISTER(HMC5883L);
-
-// FIX: I CAN'T CONNECT TO THIS GOD DAMN SENSOR
 
 uint8_t HMC_init(const struct device *i2c_device) {
     i2c_dev = i2c_device;
@@ -15,25 +16,25 @@ uint8_t HMC_init(const struct device *i2c_device) {
     LOG_DBG("initializing HMC");
 
     i2c_buffer[0] = HMC_CONFIG_REG_A;
-    i2c_buffer[1] = 0x71;
+    i2c_buffer[1] = (0b00 << 0) | (0b100 << 2) | (0b00 << 5);
     ret = i2c_write(i2c_dev, i2c_buffer, 2, HMC_i2c_addr);
     if(ret) {
-        LOG_ERR("Error while initializing HMC");
+        LOG_ERR("Couldn't write to HMC_CONFIG_REG_A, ret: %d", ret);
         return ret;
     }
 
     i2c_buffer[0] = HMC_CONFIG_REG_B;
-    // i2c_buffer[1] = 0b00100000;
-    i2c_buffer[1] = 0xA0;
+    i2c_buffer[1] = (0b000 << 5);
+    // i2c_buffer[1] = 0xA0;
     i2c_write(i2c_dev, i2c_buffer, 2, HMC_i2c_addr);
     if(ret) {
-        LOG_ERR("Error while initializing HMC");
+        LOG_ERR("Couldn't write to HMC_CONFIG_REG_B, ret: %d", ret);
         return ret;
     }
 
     ret = HMC_set_mode(continuous, false);
     if(ret) {
-        LOG_ERR("Error while initializing HMC");
+        LOG_ERR("Couldn't set mode of HMC, ret: %d", ret);
         return ret;
     }
 
@@ -42,26 +43,30 @@ uint8_t HMC_init(const struct device *i2c_device) {
     return 0;
 }
 
-// uint8_t HMC_read_mag(int16_t output[]) {
-//     int ret;
+uint8_t HMC_read_mag(int16_t output[]) {
+    int ret;
 
-//     i2c_buffer[0] = HMC_DATA_START;
+    i2c_buffer[0] = 0x06;
+    ret = i2c_write(i2c_dev, i2c_buffer, 6, HMC_i2c_addr);
+    if(ret) {
+        return ret;
+    }
 
-//     ret = i2c_write(i2c_dev, i2c_buffer, 1, HMC_i2c_addr);
+    i2c_buffer[0] = HMC_DATA_START;
+    ret = i2c_write(i2c_dev, i2c_buffer, 1, HMC_i2c_addr);
+    if(ret) {
+        return ret;
+    }
 
-//     if(ret) {
-//         return ret;
-//     }
+    ret = i2c_read(i2c_dev, i2c_buffer, 7, HMC_i2c_addr);
+    if(ret) {
+        return ret;
+    }
 
-//     ret = i2c_read(i2c_dev, i2c_buffer, 6, HMC_i2c_addr);
-//     if(ret) {
-//         return ret;
-//     }
-
-//     for(uint8_t i = 0; i < 3; i++) {
-//         output[i] = (i2c_buffer[2 * i] << 8) | i2c_buffer[2 * i + 1];
-//     }
-// }
+    for(uint8_t i = 0; i < 3; i++) {
+        output[i] = (i2c_buffer[2 * i] << 8) | i2c_buffer[2 * i + 1];
+    }
+}
 
 uint8_t HMC_set_mode(HMC_mode_t mode, bool high_speed) {
     uint8_t ret;
@@ -73,30 +78,4 @@ uint8_t HMC_set_mode(HMC_mode_t mode, bool high_speed) {
     ret = i2c_write(i2c_dev, i2c_buffer, mode_val, HMC_i2c_addr);
 
     return ret;
-}
-
-uint8_t HMC_read_mag(int16_t output[]) {
-    int ret;
-
-    for(int i = 0; i < 6; i++) {
-        LOG_DBG("i = %d", i);
-        i2c_buffer[0] = HMC_DATA_START + i;
-        ret = i2c_write(i2c_dev, i2c_buffer, 1, HMC_i2c_addr);
-
-        if(ret) {
-            return ret;
-        }
-
-        ret = i2c_read(i2c_dev, i2c_buffer + i, 1, HMC_i2c_addr);
-
-        if(ret) {
-            return ret;
-        }
-    }
-
-    for(uint8_t i = 0; i < 3; i++) {
-        output[i] = (i2c_buffer[2 * i] << 8) | i2c_buffer[2 * i + 1];
-    }
-
-    return 0;
 }
