@@ -18,9 +18,7 @@
 #define SLEEP_TIME_MS   1000
 
 #define I2C_NODE DT_NODELABEL(i2c0)
-
-LOG_MODULE_REGISTER(APP);
-
+#define BUTTONS_NODE DT_NODELABEL(button)
 static const struct device *i2c_dev = DEVICE_DT_GET(I2C_NODE);
 
 static uint8_t  i2c_buf[6];
@@ -40,40 +38,6 @@ void main(void) {
 	MPU_init(i2c_dev);
 	HMC_init(i2c_dev);
 
-	/* while(true) {
-		k_msleep(SLEEP_TIME_MS);
-	
-		ret = MPU_read_acc(sensor_data);
-		if(ret) {
-			LOG_ERR("Error while reading acc");
-			// continue;
-		}
-		LOG_INF("ACC:  x = %7.2f, y = %7.2f, z = %7.2f", 
-		(float)ACC_SCALE_FACTOR*(int16_t)sensor_data[0], 
-		(float)ACC_SCALE_FACTOR*(int16_t)sensor_data[1], 
-		(float)ACC_SCALE_FACTOR*(int16_t)sensor_data[2]);
-
-		ret = MPU_read_gyro(sensor_data);
-		if(ret) {
-			LOG_ERR("Error while reading gyro");
-			// continue;
-		}
-		LOG_INF("GYRO: x = %7.2f, y = %7.2f, z = %7.2f", 
-		(float)GYRO_SCALE_FACTOR*(int16_t)sensor_data[0], 
-		(float)GYRO_SCALE_FACTOR*(int16_t)sensor_data[1], 
-		(float)GYRO_SCALE_FACTOR*(int16_t)sensor_data[2]);
-
-		// ret = HMC_read_mag(sensor_data);
-		// if(ret) {
-		// 	LOG_ERR("Error while reading mag");
-		// 	continue;
-		// }
-		// LOG_INF("MAG: x = %6d, y = %6d, z = %6d", 
-		// (int16_t)sensor_data[0], 
-		// (int16_t)sensor_data[1], 
-		// (int16_t)sensor_data[2]);
-	} */
-
 	while(true) {
 		k_msleep(SLEEP_TIME_MS);
 	
@@ -89,19 +53,23 @@ void main(void) {
 			// continue;
 		}
 
-		LOG_INF("%f, %f, %f, %f, %f, %f", 
+		ret = HMC_read_mag(mag_data);
+		if(ret) {
+			LOG_ERR("Error while reading mag");
+			// continue;
+		}
+
+		LOG_INF("%f, %f, %f,\n %f, %f, %f,\n %f, %f, %f", 
 		(float)(ACC_SCALE_FACTOR)*(int16_t)acc_data[0], 
 		(float)(ACC_SCALE_FACTOR)*(int16_t)acc_data[1], 
 		(float)(ACC_SCALE_FACTOR)*(int16_t)acc_data[2],
 		(float)(GYRO_SCALE_FACTOR)*(int16_t)gyro_data[0], 
 		(float)(GYRO_SCALE_FACTOR)*(int16_t)gyro_data[1], 
-		(float)(GYRO_SCALE_FACTOR)*(int16_t)gyro_data[2]);
+		(float)(GYRO_SCALE_FACTOR)*(int16_t)gyro_data[2],
+		(float)(MAG_SCALE_FACTOR)*(int16_t)mag_data[0],
+		(float)(MAG_SCALE_FACTOR)*(int16_t)mag_data[1],
+		(float)(MAG_SCALE_FACTOR)*(int16_t)mag_data[2]);
 
-		ret = HMC_read_mag(mag_data);
-		LOG_INF("%d, %d, %d",
-		(int16_t)mag_data[0], 
-		(int16_t)mag_data[1], 
-		(int16_t)mag_data[2]);
 	}
 
 }

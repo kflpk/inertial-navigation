@@ -10,6 +10,10 @@
 #include <math.h>
 #include "config.h"
 
+
+#define HMC_GAIN 0b101
+#define MAG_SCALE_FACTOR 2.56
+
 // #define HMC_i2c_addr 	0x7E
 #define HMC_i2c_addr 	(0b0111100)
 #define HMC_i2c_addr 	(0x3C >> 1)
@@ -41,5 +45,6 @@ typedef enum {
 uint8_t HMC_init(const struct device *i2c_device);
 uint8_t HMC_read_mag(int16_t output[]);
 uint8_t HMC_set_mode(HMC_mode_t mode, bool high_speed);
+uint8_t HMC_set_gain(uint8_t gain);
 
 #endif

@@ -12,7 +12,7 @@ uint8_t HMC_init(const struct device *i2c_device)
 
     uint8_t ret;
     uint8_t config_reg_a[2] = {HMC_CONFIG_REG_A, 0x70};
-    uint8_t config_reg_b[2] = {HMC_CONFIG_REG_B, 0xA0};
+    uint8_t config_reg_b[2] = {HMC_CONFIG_REG_B, (HMC_GAIN << 5)};
 
     LOG_DBG("initializing HMC");
 
@@ -87,4 +87,19 @@ uint8_t HMC_get_status() {
     status = i2c_buffer[0];
 
     return status;
+}
+
+uint8_t HMC_set_gain(uint8_t gain) {
+    uint8_t config_reg_b[2] = { HMC_CONFIG_REG_B, (gain << 5) };
+    return i2c_write(i2c_dev, config_reg_b, 2, HMC_i2c_addr);
+}
+
+uint8_t HMC_get_gain(void) {
+    uint8_t* gain;
+    uint8_t config_reg_b[1] = { HMC_CONFIG_REG_B };
+    
+    i2c_write(i2c_dev, config_reg_b, 1, HMC_i2c_addr);
+    i2c_read(i2c_dev,  gain,         1, HMC_i2c_addr);
+
+    return *gain;
 }
