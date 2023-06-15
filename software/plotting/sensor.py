@@ -24,12 +24,12 @@ class Sensor:
         return delta_t, mx, my, mz
         
 
-    def gyro(self):
+    def get_gyro(self):
         now = time.time()
         delta_t = now - self._initial_time
-        gx = 10 * signal.sawtooth(delta_t - 2 * np.pi / 3, 1)
-        gy = 10 * signal.sawtooth(delta_t - 4 * np.pi / 3, 1)
-        gz = 10 * signal.sawtooth(delta_t                , 1)
+        gx = 10 * signal.square(delta_t - 2 * np.pi / 3)
+        gy = 10 * signal.square(delta_t - 4 * np.pi / 3)
+        gz = 10 * signal.square(delta_t                )
         return delta_t, gx, gy, gz
 
 if __name__ == "__main__":
