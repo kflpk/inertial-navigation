@@ -6,3 +6,4 @@ project(blinky)
 
 target_sources(app PRIVATE src/main.c)
 target_sources(app PRIVATE src/mpu6050.c)
+target_sources(app PRIVATE src/hmc5883l.c)
