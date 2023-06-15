@@ -14,11 +14,13 @@
 #include "mpu6050.h"
 #include "hmc5883l.h"
 
+LOG_MODULE_REGISTER(app);
+
 /* 1000 msec = 1 sec */
 #define SLEEP_TIME_MS   1000
 
 #define I2C_NODE DT_NODELABEL(i2c0)
-#define BUTTONS_NODE DT_NODELABEL(button)
+// #define BUTTONS_NODE DT_NODELABEL(button)
 static const struct device *i2c_dev = DEVICE_DT_GET(I2C_NODE);
 
 static uint8_t  i2c_buf[6];
@@ -59,13 +61,17 @@ void main(void) {
 			// continue;
 		}
 
-		LOG_INF("%f, %f, %f,\n %f, %f, %f,\n %f, %f, %f", 
+		LOG_INF("acc:  %f, %f, %f", 
 		(float)(ACC_SCALE_FACTOR)*(int16_t)acc_data[0], 
 		(float)(ACC_SCALE_FACTOR)*(int16_t)acc_data[1], 
-		(float)(ACC_SCALE_FACTOR)*(int16_t)acc_data[2],
+		(float)(ACC_SCALE_FACTOR)*(int16_t)acc_data[2]);
+
+		LOG_INF("gyro: %f, %f, %f",
 		(float)(GYRO_SCALE_FACTOR)*(int16_t)gyro_data[0], 
 		(float)(GYRO_SCALE_FACTOR)*(int16_t)gyro_data[1], 
-		(float)(GYRO_SCALE_FACTOR)*(int16_t)gyro_data[2],
+		(float)(GYRO_SCALE_FACTOR)*(int16_t)gyro_data[2]);
+
+		LOG_INF("mag:  %f, %f, %f", 
 		(float)(MAG_SCALE_FACTOR)*(int16_t)mag_data[0],
 		(float)(MAG_SCALE_FACTOR)*(int16_t)mag_data[1],
 		(float)(MAG_SCALE_FACTOR)*(int16_t)mag_data[2]);
