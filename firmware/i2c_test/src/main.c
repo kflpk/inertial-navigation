@@ -20,6 +20,7 @@
 #define SLEEP_TIME_MS   1000
 #define I2C_NODE DT_NODELABEL(i2c0)
 #define BT_STATUS_LED DK_LED1
+#define SENSOR_LED  DK_LED2
 
 LOG_MODULE_REGISTER(app);
 
@@ -33,22 +34,24 @@ static struct bt_conn* current_conn;
 
 
 void button_handler(uint32_t button_state, uint32_t has_changed) {
+	uint8_t button_value = 0;
 	if(button_state & has_changed) {
 		switch(has_changed) {
 			case DK_BTN1_MSK:
-				dk_set_led(DK_LED1, 1);
+				button_value = 1;
 			break;
 			case DK_BTN2_MSK:
-				dk_set_led(DK_LED2, 1);
+				button_value = 2;
 			break;
 			case DK_BTN3_MSK:
-				dk_set_led(DK_LED3, 1);
+				button_value = 3;
 			break;
 			case DK_BTN4_MSK:
-				dk_set_led(DK_LED4, 1);
+				button_value = 4;
 			break;
 		}
 	}
+	set_button_value(button_value);
 }
 
 void init_buttons_and_leds() {
@@ -103,6 +106,7 @@ void main(void) {
 	while(true) {
 		k_msleep(SLEEP_TIME_MS);
 	
+	 	dk_set_led_on(SENSOR_LED);
 		ret = MPU_read_acc(acc_data);
 		if(ret) {
 			LOG_ERR("Error while reading acc");
@@ -117,7 +121,7 @@ void main(void) {
 		if(ret) {
 			LOG_ERR("Error while reading mag");
 		}
-
+		dk_set_led_off(SENSOR_LED);
 		LOG_INF("acc:  %f, %f, %f", 
 		(float)(ACC_SCALE_FACTOR)*(int16_t)acc_data[0], 
 		(float)(ACC_SCALE_FACTOR)*(int16_t)acc_data[1], 
