@@ -74,6 +74,11 @@ void on_connected(struct bt_conn* conn, uint32_t err) {
 
 void on_disconnected(struct bt_conn* conn, uint32_t reason) {
 	LOG_INF("Disconnected, reason: 0x%x", reason);
+	dk_set_led_off(BT_STATUS_LED);
+	if(current_conn) {
+		bt_conn_unref(current_conn);
+		current_conn = NULL;
+	}
 }
 
 struct bt_conn_cb bluetooth_callbacks = {
