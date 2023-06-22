@@ -9,10 +9,12 @@
 #include <zephyr/devicetree.h>
 #include <zephyr/drivers/i2c.h>
 #include <zephyr/logging/log.h>
+#include <dk_buttons_and_leds.h>
 
 #include "config.h"
 #include "mpu6050.h"
 #include "hmc5883l.h"
+#include "remote.h"
 
 LOG_MODULE_REGISTER(app);
 
@@ -39,6 +41,8 @@ void main(void) {
 
 	MPU_init(i2c_dev);
 	HMC_init(i2c_dev);
+
+	ret = bluetooth_init();
 
 	while(true) {
 		k_msleep(SLEEP_TIME_MS);
