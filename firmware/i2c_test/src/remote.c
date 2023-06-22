@@ -1,7 +1,5 @@
 #include "remote.h"
 
-
-
 #define LOG_MODULE_NAME remote
 LOG_MODULE_REGISTER(remote);
 
@@ -18,6 +16,10 @@ static const struct bt_data ad[] = {
 static const struct bt_data sd[] = {
     BT_DATA_BYTES(BT_DATA_UUID128_ALL, BT_UUID_REMOTE_SERV_VAL)
 };
+
+BT_GATT_SERVICE_DEFINE(remote_srv, 
+BT_GATT_PRIMARY_SERVICE(BT_UUID_REMOTE_SERVICE),
+);
 
 /* ========== CALLBACKS =========== */
 void bt_ready(int err) {
