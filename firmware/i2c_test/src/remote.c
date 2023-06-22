@@ -30,9 +30,15 @@ void bt_ready(int err) {
 }
 
 
-int bluetooth_init(void) {
+int bluetooth_init(struct bt_conn_cb* callbacks) {
     int err;
     LOG_INF("Initializing bluetooth");
+
+    if(callbacks != NULL) {
+        bt_conn_cb_register(callbacks);
+    } else {
+        return NRFX_ERROR_NULL;
+    }
 
     err = bt_enable(bt_ready);
     if(err) { 
@@ -42,12 +48,12 @@ int bluetooth_init(void) {
 
     k_sem_take(&bt_init_ok, K_FOREVER);
 
-    err = bt_le_adv_start(BT_LE_ADV_CONN, ad, ARRAY_SIZE(ad), NULL, 0);
-    LOG_INF("Bluetooth started advertising");
+    err = bt_le_adv_start(BT_LE_ADV_CONN, ad, ARRAY_SIZE(ad), sd, ARRAY_SIZE(sd));
     if(err) {
         LOG_ERR("Couldn't start advertising (err: %d)", err);
         return err;
     }
+    LOG_INF("Bluetooth started advertising");
 
     return err;
 }

@@ -12,4 +12,4 @@
 
 #define BT_UUID_REMOTE_SERVICE BT_UUID_DECLARE_128(BT_UUID_REMOTE_SERV_VAL)
 
-int bluetooth_init(void);
+int bluetooth_init(struct bt_conn_cb* callbacks);
