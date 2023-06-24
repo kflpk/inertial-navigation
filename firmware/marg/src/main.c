@@ -21,6 +21,7 @@
 #define I2C_NODE DT_NODELABEL(i2c0)
 #define BT_STATUS_LED DK_LED1
 #define SENSOR_LED  DK_LED2
+#define LOG_SENSORS false
 
 LOG_MODULE_REGISTER(app);
 
@@ -50,8 +51,9 @@ void button_handler(uint32_t button_state, uint32_t has_changed) {
 				button_value = 4;
 			break;
 		}
+		LOG_INF("button pressed: %d", button_value);
+		set_button_value(button_value);
 	}
-	set_button_value(button_value);
 }
 
 void init_buttons_and_leds() {
@@ -102,6 +104,11 @@ void main(void) {
 	MPU_init(i2c_dev);
 	HMC_init(i2c_dev);
 	ret = bluetooth_init(&bluetooth_callbacks);
+
+	if(LOG_SENSORS == false) {
+		while(true)
+			k_msleep(SLEEP_TIME_MS);
+	}
 
 	while(true) {
 		k_msleep(SLEEP_TIME_MS);
