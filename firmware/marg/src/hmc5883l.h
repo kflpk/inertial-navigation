@@ -15,8 +15,6 @@
 #define MAG_SCALE_FACTOR 2.56
 
 // #define HMC_i2c_addr 	0x7E
-#define HMC_i2c_addr 	(0b0111100)
-#define HMC_i2c_addr 	(0x3C >> 1)
 #define HMC_i2c_addr 	(0x1E)
 
 

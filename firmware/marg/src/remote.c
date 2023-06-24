@@ -8,7 +8,7 @@ static K_SEM_DEFINE(bt_init_ok, 1, 1); // i dunno what it does
 #define DEVICE_NAME CONFIG_BT_DEVICE_NAME
 #define DEVICE_NAME_LEN (sizeof(DEVICE_NAME - 1) )
 
-static uint8_t button_value = 0;
+static uint8_t sensor_buffer[18];
 
 static const struct bt_data ad[] = {
     BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR)),
@@ -30,15 +30,23 @@ void bt_ready(int err) {
 }
 
 static ssize_t read_button_characteristic_cb(struct bt_conn* conn, const struct bt_gatt_attr* attr, void* buf, uint16_t len, uint16_t offset) {
-    return bt_gatt_attr_read(conn, attr, buf, len, offset, &button_value, sizeof(button_value));
+    return bt_gatt_attr_read(conn, attr, buf, len, offset, sensor_buffer, sizeof(sensor_buffer));
 }
 
 BT_GATT_SERVICE_DEFINE(remote_srv, 
 BT_GATT_PRIMARY_SERVICE(BT_UUID_REMOTE_SERVICE),
-    BT_GATT_CHARACTERISTIC(BT_UUID_REMOTE_BUTTON_CHRC,
+    BT_GATT_CHARACTERISTIC(BT_UUID_REMOTE_IMU_CHRC,
         BT_GATT_CHRC_READ,
         BT_GATT_PERM_READ,
         read_button_characteristic_cb, NULL, NULL),
+    // BT_GATT_CHARACTERISTIC(BT_UUID_REMOTE_GYRO_CHRC,
+    //     BT_GATT_CHRC_READ,
+    //     BT_GATT_PERM_READ,
+    //     read_button_characteristic_cb, NULL, NULL),
+    // BT_GATT_CHARACTERISTIC(BT_UUID_REMOTE_MAG_CHRC,
+    //     BT_GATT_CHRC_READ,
+    //     BT_GATT_PERM_READ,
+    //     read_button_characteristic_cb, NULL, NULL),
 );
 
 
@@ -72,5 +80,5 @@ int bluetooth_init(struct bt_conn_cb* callbacks) {
 }
 
 void set_button_value(int value) {
-    button_value = value;
+    sensor_buffer[0] = value;
 }

@@ -67,6 +67,7 @@ void init_buttons_and_leds() {
 		LOG_ERR("Couldn't init LEDs, err: %d", ret);
 	}
 }
+
 void on_connected(struct bt_conn* conn, uint32_t err) {
     if(err) {
         LOG_ERR("connection err: %d", err);
@@ -129,6 +130,7 @@ void main(void) {
 			LOG_ERR("Error while reading mag");
 		}
 		dk_set_led_off(SENSOR_LED);
+
 		LOG_INF("acc:  %f, %f, %f", 
 		(float)(ACC_SCALE_FACTOR)*(int16_t)acc_data[0], 
 		(float)(ACC_SCALE_FACTOR)*(int16_t)acc_data[1], 
