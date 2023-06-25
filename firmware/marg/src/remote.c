@@ -8,7 +8,7 @@ static K_SEM_DEFINE(bt_init_ok, 1, 1); // i dunno what it does
 #define DEVICE_NAME CONFIG_BT_DEVICE_NAME
 #define DEVICE_NAME_LEN (sizeof(DEVICE_NAME - 1) )
 
-static uint8_t sensor_buffer[18];
+static uint8_t sensor_buffer[18] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 static const struct bt_data ad[] = {
     BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR)),
@@ -81,4 +81,8 @@ int bluetooth_init(struct bt_conn_cb* callbacks) {
 
 void set_button_value(int value) {
     sensor_buffer[0] = value;
+}
+
+uint8_t* get_buffer_addr(void) { 
+    return sensor_buffer;
 }

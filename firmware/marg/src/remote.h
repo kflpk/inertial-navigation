@@ -28,3 +28,4 @@
 
 int bluetooth_init(struct bt_conn_cb* callbacks);
 void set_button_value(int value);
+uint8_t* get_buffer_addr(void);

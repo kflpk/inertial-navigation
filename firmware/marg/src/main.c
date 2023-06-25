@@ -21,7 +21,7 @@
 #define I2C_NODE DT_NODELABEL(i2c0)
 #define BT_STATUS_LED DK_LED1
 #define SENSOR_LED  DK_LED2
-#define LOG_SENSORS false
+#define LOG_SENSORS true
 
 LOG_MODULE_REGISTER(app);
 
@@ -31,6 +31,7 @@ static uint8_t  i2c_buf[6];
 static uint16_t acc_data[3];
 static uint16_t gyro_data[3];
 static uint16_t mag_data[3];
+uint16_t* sensor_data;
 static struct bt_conn* current_conn;
 
 
@@ -106,46 +107,47 @@ void main(void) {
 	HMC_init(i2c_dev);
 	ret = bluetooth_init(&bluetooth_callbacks);
 
+	sensor_data = (uint16_t*)get_buffer_addr();
+
 	if(LOG_SENSORS == false) {
 		while(true)
 			k_msleep(SLEEP_TIME_MS);
 	}
 
 	while(true) {
-		k_msleep(SLEEP_TIME_MS);
+		k_msleep(100);
 	
 	 	dk_set_led_on(SENSOR_LED);
-		ret = MPU_read_acc(acc_data);
+		ret = MPU_read_acc(sensor_data);
 		if(ret) {
 			LOG_ERR("Error while reading acc");
 		}
 
-		ret = MPU_read_gyro(gyro_data);
+		ret = MPU_read_gyro(sensor_data + 3);
 		if(ret) {
 			LOG_ERR("Error while reading gyro");
 		}
 
-		ret = HMC_read_mag(mag_data);
+		ret = HMC_read_mag(sensor_data + 6);
 		if(ret) {
 			LOG_ERR("Error while reading mag");
 		}
 		dk_set_led_off(SENSOR_LED);
 
 		LOG_INF("acc:  %f, %f, %f", 
-		(float)(ACC_SCALE_FACTOR)*(int16_t)acc_data[0], 
-		(float)(ACC_SCALE_FACTOR)*(int16_t)acc_data[1], 
-		(float)(ACC_SCALE_FACTOR)*(int16_t)acc_data[2]);
+		(float)(ACC_SCALE_FACTOR)*(int16_t)sensor_data[0], 
+		(float)(ACC_SCALE_FACTOR)*(int16_t)sensor_data[1], 
+		(float)(ACC_SCALE_FACTOR)*(int16_t)sensor_data[2]);
 
 		LOG_INF("gyro: %f, %f, %f",
-		(float)(GYRO_SCALE_FACTOR)*(int16_t)gyro_data[0], 
-		(float)(GYRO_SCALE_FACTOR)*(int16_t)gyro_data[1], 
-		(float)(GYRO_SCALE_FACTOR)*(int16_t)gyro_data[2]);
+		(float)(GYRO_SCALE_FACTOR)*(int16_t)sensor_data[3], 
+		(float)(GYRO_SCALE_FACTOR)*(int16_t)sensor_data[4], 
+		(float)(GYRO_SCALE_FACTOR)*(int16_t)sensor_data[5]);
 
 		LOG_INF("mag:  %f, %f, %f", 
-		(float)(MAG_SCALE_FACTOR)*(int16_t)mag_data[0],
-		(float)(MAG_SCALE_FACTOR)*(int16_t)mag_data[1],
-		(float)(MAG_SCALE_FACTOR)*(int16_t)mag_data[2]);
-
+		(float)(MAG_SCALE_FACTOR)*(int16_t)sensor_data[6],
+		(float)(MAG_SCALE_FACTOR)*(int16_t)sensor_data[7],
+		(float)(MAG_SCALE_FACTOR)*(int16_t)sensor_data[8]);
 	}
 
 }
