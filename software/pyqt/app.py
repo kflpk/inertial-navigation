@@ -1,3 +1,4 @@
+from PyQt5 import QtGui
 from sensor import *
 import sys
 from PyQt5.QtCore import QFile, QLine, qUnregisterResourceData, Qt, pyqtSignal, QThread, QObject
@@ -30,35 +31,56 @@ from functools import partial
 from pyqtgraph import PlotWidget
 import bleak
 
+AFS_SEL = 1
+ACC_SCALE_FACTOR = (2 ** AFS_SEL) / 16384.0
 
+device_address = 'F2:E3:5C:1A:6D:96'
+data_characteristic_uuid = '21370005-2137-2137-2137-213721372137'
 
-class BLEWorker(QObject):
-    data_received = pyqtSignal(bytearray)
+class Sensor:
+    def __init__(self, device_address, data_characteristic_uuid):
+        self.device_address = device_address
+        self.data_characteristic_uuid = data_characteristic_uuid
+        self.client = None
+        self.latest_data = bytearray()
 
-    async def receive_data(self):
-        while True:
-            # Your data receiving logic here
-            # Example: Read a characteristic value from a connected BLE device
-            data = await self.client.read_gatt_char('21370005-2137-2137-2137-213721372137')
-            
-            # Emit a signal with the received data
-            self.data_received.emit(data)
+    async def connect(self):
+        self.client = bleak.BleakClient(self.device_address)
+        await self.client.connect()
 
-    def start_ble_communication(self):
-        async def _start_ble_communication():
-            self.client = bleak.BleakClient('F2:E3:5C:1A:6D:96')
-            await self.client.connect()
-            await self.receive_data()
+    async def disconnect(self):
+        if self.client:
+            await self.client.disconnect()
+            self.client = None
 
-        asyncio.run(_start_ble_communication())
+    async def read_sensor_data(self):
+        if self.client:
+            data = await self.client.read_gatt_char(self.data_characteristic_uuid)
+            self.latest_data = bytearray(data)
+
+    def get_latest_data(self):
+        return self.latest_data
+
+async def initialize_sensor(device_address, data_characteristic_uuid):
+    sensor = Sensor(device_address, data_characteristic_uuid)
+    await sensor.connect()
+    return sensor
+
+async def get_sensor_data(sensor):
+    await sensor.read_sensor_data()
+    return sensor.get_latest_data()
+
+async def close_sensor(sensor):
+    await sensor.disconnect()
+
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
 
-        self.fp = 30.0
+        self.fp = 10.0
         self.dt = 1/self.fp
-        self.marg = Sensor()
+        self.sensor = Sensor('F2:E3:5C:1A:6D:96', '21370005-2137-2137-2137-213721372137')
 
         ########## WINDOW PROPERTIES ############
         self.set_window_properties()
@@ -72,20 +94,8 @@ class MainWindow(QMainWindow):
         self.layout = QHBoxLayout(self.centralWidget())
         self.layout.addLayout(self.sidebar_layout)
         self.layout.addWidget(self.plot_widget)
-
-        ########## BLE ###########
-        self.worker = BLEWorker()
-        self.worker.data_received.connect(self.update_plots)
-
-        self.thread = QThread()
-        self.worker.moveToThread(self.thread)
-        self.thread.started.connect(self.worker.start_ble_communication)
+        self.plot_widget.setYRange(-4, 4)
     
-    def start_ble_connection(self):
-        self.thread.start()
-
-    def stop_ble_connection(self):
-        exit()
 
     def _sidebar_init(self):
         ### SENSOR READINGS 
@@ -174,9 +184,9 @@ class MainWindow(QMainWindow):
         self.plot_z = self.plot_widget.plot(pen=self.pen_z, name="Z axis")
 
         self.time_data = np.arange(0, 5, self.dt)
-        self.data_x = np.sin(1*np.pi * self.time_data - 2*np.pi/3)
-        self.data_y = np.sin(1*np.pi * self.time_data - 4*np.pi/3)
-        self.data_z = np.sin(1*np.pi * self.time_data - 6*np.pi/3)
+        self.data_x = 0 * self.time_data
+        self.data_y = 0 * self.time_data
+        self.data_z = 0 * self.time_data
 
         self.plot_x.setData(self.time_data, self.data_x)
         self.plot_y.setData(self.time_data, self.data_y)
@@ -186,32 +196,67 @@ class MainWindow(QMainWindow):
         self.timer = pg.QtCore.QTimer()
         self.timer.timeout.connect(self.update_plots)
         self.timer.start(1000 * self.dt)
+    
+    def stop_timer(self):
+        self.timer.stop()
 
     
     def update_plots(self):
-        txtformat = "{data:8.2f}"
+        txtformat = "{data:8.2f} g"
         time_last = self.time_data[-1]
         self.time_data[:-1] = self.time_data[1:]
         self.time_data[-1] = time_last + self.dt
 
-        self.data_x[:-1] = self.data_x[1:]
-        self.data_x[-1] = np.sin(1*np.pi * time_last - 2*np.pi/3)
-        self.xval.setText(txtformat.format(data=self.data_x[-1]))
+        try:
+            buf = self.loop.run_until_complete(get_sensor_data(self.sensor))
+            acc_x = ACC_SCALE_FACTOR * int.from_bytes(buf[0:2], byteorder="little", signed=True)
+            acc_y = ACC_SCALE_FACTOR * int.from_bytes(buf[2:4], byteorder="little", signed=True)
+            acc_z = ACC_SCALE_FACTOR * int.from_bytes(buf[4:6], byteorder="little", signed=True)
 
-        self.data_y[:-1] = self.data_y[1:]
-        self.data_y[-1] = np.sin(1*np.pi * time_last - 4*np.pi/3)
-        self.yval.setText(txtformat.format(data=self.data_y[-1]))
+            self.data_x[:-1] = self.data_x[1:]
+            self.data_x[-1] = acc_x
+            self.xval.setText(txtformat.format(data=self.data_x[-1]))
 
-        self.data_z[:-1] = self.data_z[1:]
-        self.data_z[-1] = np.sin(1*np.pi * time_last - 6*np.pi/3)
-        self.zval.setText(txtformat.format(data=self.data_z[-1]))
+            self.data_y[:-1] = self.data_y[1:]
+            self.data_y[-1] = acc_y
+            self.yval.setText(txtformat.format(data=self.data_y[-1]))
 
-        self.plot_x.setData(self.time_data, self.data_x)
-        self.plot_y.setData(self.time_data, self.data_y)
-        self.plot_z.setData(self.time_data, self.data_z)
+            self.data_z[:-1] = self.data_z[1:]
+            self.data_z[-1] = acc_z
+            self.zval.setText(txtformat.format(data=self.data_z[-1]))
+
+            self.plot_x.setData(self.time_data, self.data_x)
+            self.plot_y.setData(self.time_data, self.data_y)
+            self.plot_z.setData(self.time_data, self.data_z)
+        except bleak.exc.BleakError:
+            print("Device disconnected")
+            self.stop_ble_connection()
+
+    def start_ble_connection(self):
+        try:
+            self.sensor = self.loop.run_until_complete(initialize_sensor(device_address, data_characteristic_uuid))
+            self.bluetooth_state_label.setText("Bluetooth connected")
+            self.start_timer()
+        except:
+            print("Error: coudln't connect to the sensor")
+
+
+    def stop_ble_connection(self):
+        try:
+            if self.sensor:
+                self.loop.run_until_complete(close_sensor(self.sensor))
+            self.sensor = None
+            self.bluetooth_state_label.setText("Bluetooth disconnected")
+            self.stop_timer()
+        except:
+            print("Device already disonnected")
 
     def run(self):
         self.set_window_properties()
         self.init_plots()
-        self.start_timer()
+        self.loop = asyncio.get_event_loop()
+
         self.show()
+    
+    def closeEvent(self, event) -> None:
+        self.stop_ble_connection()
