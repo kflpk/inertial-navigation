@@ -1,7 +1,15 @@
 from PyQt5 import QtGui
 from sensor import *
 import sys
-from PyQt5.QtCore import QFile, QLine, qUnregisterResourceData, Qt, pyqtSignal, QThread, QObject
+from PyQt5.QtCore import (
+    QFile,
+    QLine,
+    qUnregisterResourceData,
+    Qt,
+    pyqtSignal,
+    QThread,
+    QObject,
+)
 from PyQt5.QtWidgets import (
     QAction,
     QGridLayout,
@@ -32,10 +40,11 @@ from pyqtgraph import PlotWidget
 import bleak
 
 AFS_SEL = 1
-ACC_SCALE_FACTOR = (2 ** AFS_SEL) / 16384.0
+ACC_SCALE_FACTOR = (2**AFS_SEL) / 16384.0
 
-device_address = 'F2:E3:5C:1A:6D:96'
-data_characteristic_uuid = '21370005-2137-2137-2137-213721372137'
+device_address = "F2:E3:5C:1A:6D:96"
+data_characteristic_uuid = "21370005-2137-2137-2137-213721372137"
+
 
 class Sensor:
     def __init__(self, device_address, data_characteristic_uuid):
@@ -61,14 +70,17 @@ class Sensor:
     def get_latest_data(self):
         return self.latest_data
 
+
 async def initialize_sensor(device_address, data_characteristic_uuid):
     sensor = Sensor(device_address, data_characteristic_uuid)
     await sensor.connect()
     return sensor
 
+
 async def get_sensor_data(sensor):
     await sensor.read_sensor_data()
     return sensor.get_latest_data()
+
 
 async def close_sensor(sensor):
     await sensor.disconnect()
@@ -79,8 +91,8 @@ class MainWindow(QMainWindow):
         super(MainWindow, self).__init__()
 
         self.fp = 10.0
-        self.dt = 1/self.fp
-        self.sensor = Sensor('F2:E3:5C:1A:6D:96', '21370005-2137-2137-2137-213721372137')
+        self.dt = 1 / self.fp
+        self.sensor = Sensor(device_address, data_characteristic_uuid)
 
         ########## WINDOW PROPERTIES ############
         self.set_window_properties()
@@ -95,10 +107,9 @@ class MainWindow(QMainWindow):
         self.layout.addLayout(self.sidebar_layout)
         self.layout.addWidget(self.plot_widget)
         self.plot_widget.setYRange(-4, 4)
-    
 
     def _sidebar_init(self):
-        ### SENSOR READINGS 
+        ### SENSOR READINGS
         self.reading_label = QLabel(self)
         self.reading_label.setText("<b>Sensor readings</b>")
         self.reading_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -161,7 +172,6 @@ class MainWindow(QMainWindow):
         self.sidebar_layout.addLayout(self.bluetooth_layout)
         # self.sidebar_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
-
     def set_window_properties(self):
         self.title = "Akcelerometr"
         self.height = 500
@@ -171,9 +181,9 @@ class MainWindow(QMainWindow):
         self.setMinimumWidth(100)
         self.setGeometry(400, 250, self.width, self.height)
         self.setWindowTitle(self.title)
-    
+
     def init_plots(self):
-        penwidth=2
+        penwidth = 2
 
         self.pen_x = pg.mkPen(color="#D22D72", width=penwidth)
         self.pen_y = pg.mkPen(color="#72D22D", width=penwidth)
@@ -196,11 +206,10 @@ class MainWindow(QMainWindow):
         self.timer = pg.QtCore.QTimer()
         self.timer.timeout.connect(self.update_plots)
         self.timer.start(1000 * self.dt)
-    
+
     def stop_timer(self):
         self.timer.stop()
 
-    
     def update_plots(self):
         txtformat = "{data:8.2f} g"
         time_last = self.time_data[-1]
@@ -209,9 +218,15 @@ class MainWindow(QMainWindow):
 
         try:
             buf = self.loop.run_until_complete(get_sensor_data(self.sensor))
-            acc_x = ACC_SCALE_FACTOR * int.from_bytes(buf[0:2], byteorder="little", signed=True)
-            acc_y = ACC_SCALE_FACTOR * int.from_bytes(buf[2:4], byteorder="little", signed=True)
-            acc_z = ACC_SCALE_FACTOR * int.from_bytes(buf[4:6], byteorder="little", signed=True)
+            acc_x = ACC_SCALE_FACTOR * int.from_bytes(
+                buf[0:2], byteorder="little", signed=True
+            )
+            acc_y = ACC_SCALE_FACTOR * int.from_bytes(
+                buf[2:4], byteorder="little", signed=True
+            )
+            acc_z = ACC_SCALE_FACTOR * int.from_bytes(
+                buf[4:6], byteorder="little", signed=True
+            )
 
             self.data_x[:-1] = self.data_x[1:]
             self.data_x[-1] = acc_x
@@ -234,12 +249,13 @@ class MainWindow(QMainWindow):
 
     def start_ble_connection(self):
         try:
-            self.sensor = self.loop.run_until_complete(initialize_sensor(device_address, data_characteristic_uuid))
+            self.sensor = self.loop.run_until_complete(
+                initialize_sensor(device_address, data_characteristic_uuid)
+            )
             self.bluetooth_state_label.setText("Bluetooth connected")
             self.start_timer()
         except:
             print("Error: coudln't connect to the sensor")
-
 
     def stop_ble_connection(self):
         try:
@@ -257,6 +273,6 @@ class MainWindow(QMainWindow):
         self.loop = asyncio.get_event_loop()
 
         self.show()
-    
+
     def closeEvent(self, event) -> None:
         self.stop_ble_connection()
