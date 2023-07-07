@@ -110,27 +110,22 @@ class MainWindow(QMainWindow):
 
     def _sidebar_init(self):
         ### SENSOR READINGS
-        self.reading_label = QLabel(self)
-        self.reading_label.setText("<b>Sensor readings</b>")
-        self.reading_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.reading_label = QLabel("<b>Sensor readings</b>",  self, alignment=Qt.AlignmentFlag.AlignCenter)
 
-        self.xlabel = QLabel(self)
-        self.xlabel.setText("X Acceleration: ")
-        self.xval = QLabel(self)
+        self.xlabel = QLabel("X acceleration: ", self)
+        self.xval = QLabel("0.00", self)
         self.xlayout = QHBoxLayout()
         self.xlayout.addWidget(self.xlabel)
         self.xlayout.addWidget(self.xval)
 
-        self.ylabel = QLabel(self)
-        self.ylabel.setText("Y Acceleration: ")
-        self.yval = QLabel(self)
+        self.ylabel = QLabel("Y acceleration: ", self)
+        self.yval = QLabel("0.00", self)
         self.ylayout = QHBoxLayout()
         self.ylayout.addWidget(self.ylabel)
         self.ylayout.addWidget(self.yval)
 
-        self.zlabel = QLabel(self)
-        self.zval = QLabel(self)
-        self.zlabel.setText("Z Acceleration: ")
+        self.zlabel = QLabel("Z acceleration: ", self)
+        self.zval = QLabel("0.00", self)
         self.zlayout = QHBoxLayout()
         self.zlayout.addWidget(self.zlabel)
         self.zlayout.addWidget(self.zval)
@@ -144,21 +139,16 @@ class MainWindow(QMainWindow):
         ### /SENSOR READINGS
 
         ### BLUETOOTH
-        self.bt_title = QLabel(self)
-        self.bt_title.setText("<b>Bluetooth</b>")
-        self.bt_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.bt_connect_button = QPushButton(self)
-        self.bt_connect_button.setText("Connect")
+        self.bt_title = QLabel("<b>Bluetooth</b>", self, alignment=Qt.AlignmentFlag.AlignCenter)
+        self.bt_connect_button = QPushButton("Connect", self)
         self.bt_connect_button.clicked.connect(self.start_ble_connection)
-        self.bt_disconnect_button = QPushButton(self)
-        self.bt_disconnect_button.setText("Disconnect")
+        self.bt_disconnect_button = QPushButton("Disconnect", self)
 
         self.bt_buttons_layout = QHBoxLayout(self)
         self.bt_buttons_layout.addWidget(self.bt_connect_button)
         self.bt_buttons_layout.addWidget(self.bt_disconnect_button)
         self.bt_disconnect_button.clicked.connect(self.stop_ble_connection)
-        self.bluetooth_state_label = QLabel(self)
-        self.bluetooth_state_label.setText("Bluetooth: disconnected")
+        self.bluetooth_state_label = QLabel("Bluetooth: disconnected", self)
 
         self.bluetooth_layout = QVBoxLayout(self)
         self.bluetooth_layout.addWidget(self.bt_title)
