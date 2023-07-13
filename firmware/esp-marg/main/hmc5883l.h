@@ -1,14 +1,15 @@
 #ifndef HCM5883L_H
 #define HCM5883L_H
 
-#include <zephyr/kernel.h>
-#include <zephyr/drivers/gpio.h>
-#include <zephyr/devicetree.h>
-#include <zephyr/drivers/i2c.h>
-#include <zephyr/logging/log.h>
-#include <zephyr/math/ilog2.h>
+// #include <zephyr/kernel.h>
+// #include <zephyr/drivers/gpio.h>
+// #include <zephyr/devicetree.h>
+// #include <zephyr/drivers/i2c.h>
+// #include <zephyr/logging/log.h>
+#include "esp_log.h"
+#include "driver/i2c.h"
 #include <math.h>
-#include "config.h"
+#include "i2c_conf.h"
 
 
 #define HMC_GAIN 0b101
@@ -40,7 +41,7 @@ typedef enum {
     idle = 0b11
 } HMC_mode_t;
 
-uint8_t HMC_init(const struct device *i2c_device);
+uint8_t HMC_init();
 uint8_t HMC_read_mag(int16_t output[]);
 uint8_t HMC_set_mode(HMC_mode_t mode, bool high_speed);
 uint8_t HMC_set_gain(uint8_t gain);

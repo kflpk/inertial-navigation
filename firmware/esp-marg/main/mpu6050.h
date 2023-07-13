@@ -1,14 +1,17 @@
 #ifndef MPU6050_H
 #define MPU6050_H
 
-#include <zephyr/kernel.h>
-#include <zephyr/drivers/gpio.h>
-#include <zephyr/devicetree.h>
-#include <zephyr/drivers/i2c.h>
-#include <zephyr/logging/log.h>
-#include <zephyr/math/ilog2.h>
+// #include <zephyr/kernel.h>
+// #include <zephyr/drivers/gpio.h>
+// #include <zephyr/devicetree.h>
+// #include <zephyr/drivers/i2c.h>
+// #include <zephyr/logging/log.h>
+// #include <zephyr/math/ilog2.h>
+#include "esp_log.h"
+#include "driver/i2c.h"
+// #include "config.h"
+#include "i2c_conf.h"
 #include <math.h>
-#include "config.h"
 
 
 #define AD0 0
@@ -77,7 +80,7 @@
 #define USER_CTRL_REG 0x6A
 #define I2C_MST_EN 5
 
-uint8_t MPU_init(const struct device *i2c_device);
+uint8_t MPU_init();
 uint8_t MPU_read_acc(int16_t output[]);
 uint8_t MPU_read_gyro(int16_t output[]);
 
