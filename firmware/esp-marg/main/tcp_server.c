@@ -40,7 +40,11 @@ static uint8_t output[18];
 int16_t acc_data[3] = {0, 0, 0};
 int16_t gyr_data[3] = {0, 0, 0};
 int16_t mag_data[3] = {0, 0, 0};
+int16_t sensor_buffer[9];
 
+char c = 'a';
+
+void read_sensors(void);
 static void do_retransmit(const int sock)
 {
     int len;
@@ -48,22 +52,23 @@ static void do_retransmit(const int sock)
 
     do {
         len = recv(sock, rx_buffer, sizeof(rx_buffer) - 1, 0);
+
         if (len < 0) {
             ESP_LOGE(TAG, "Error occurred during receiving: errno %d", errno);
         } else if (len == 0) {
             ESP_LOGW(TAG, "Connection closed");
-        } else {
+        } else if(rx_buffer[0] == 'r') {
             rx_buffer[len] = 0; // Null-terminate whatever is received and treat it like a string
             ESP_LOGI(TAG, "Received %d bytes: %s", len, rx_buffer);
 
-            // send() can return less bytes than supplied length.
-            // Walk-around for robust implementation.
-            int to_write = len;
+            read_sensors();
+            int tx_len = 18;
+            int to_write = tx_len; 
+
             while (to_write > 0) {
-                int written = send(sock, rx_buffer + (len - to_write), to_write, 0);
+                int written = send(sock, ((uint8_t*)sensor_buffer) + (tx_len - to_write), to_write, 0);
                 if (written < 0) {
                     ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
-                    // Failed to retransmit, giving up
                     return;
                 }
                 to_write -= written;
@@ -187,6 +192,15 @@ static esp_err_t i2c_master_init(void)
     return i2c_driver_install(i2c_master_port, conf.mode, I2C_MASTER_RX_BUF_DISABLE, I2C_MASTER_TX_BUF_DISABLE, 0);
 }
 
+void read_sensors(void) {
+    MPU_read_acc(sensor_buffer);
+    MPU_read_gyro(sensor_buffer + 3);
+    HMC_read_mag(sensor_buffer + 6);
+    // for(int i = 0; i < 18; i++) {
+    //     ((uint8_t*)sensor_buffer)[i] = 'x';
+    // }
+}
+
 void app_main(void)
 {
     ESP_ERROR_CHECK(nvs_flash_init());
@@ -206,19 +220,16 @@ void app_main(void)
     HMC_init();
 
     while(true) {
-        MPU_read_acc(acc_data);
-        MPU_read_gyro(gyr_data);
-        HMC_read_mag(mag_data);
 
-        ESP_LOGI(TAG, "acc %10f %10f %10f", ACC_SCALE_FACTOR * acc_data[0], 
-                                            ACC_SCALE_FACTOR * acc_data[1], 
-                                            ACC_SCALE_FACTOR * acc_data[2]);
-        ESP_LOGI(TAG, "gyr %10f %10f %10f", GYRO_SCALE_FACTOR * gyr_data[0], 
-                                            GYRO_SCALE_FACTOR * gyr_data[1], 
-                                            GYRO_SCALE_FACTOR * gyr_data[2]);
-        ESP_LOGI(TAG, "mag %10f %10f %10f", MAG_SCALE_FACTOR * mag_data[0], 
-                                            MAG_SCALE_FACTOR * mag_data[1], 
-                                            MAG_SCALE_FACTOR * mag_data[2]);
+        // ESP_LOGI(TAG, "acc %10f %10f %10f", ACC_SCALE_FACTOR * acc_data[0], 
+        //                                     ACC_SCALE_FACTOR * acc_data[1], 
+        //                                     ACC_SCALE_FACTOR * acc_data[2]);
+        // ESP_LOGI(TAG, "gyr %10f %10f %10f", GYRO_SCALE_FACTOR * gyr_data[0], 
+        //                                     GYRO_SCALE_FACTOR * gyr_data[1], 
+        //                                     GYRO_SCALE_FACTOR * gyr_data[2]);
+        // ESP_LOGI(TAG, "mag %10f %10f %10f", MAG_SCALE_FACTOR * mag_data[0], 
+        //                                     MAG_SCALE_FACTOR * mag_data[1], 
+        //                                     MAG_SCALE_FACTOR * mag_data[2]);
 
         vTaskDelay(10);
     }
