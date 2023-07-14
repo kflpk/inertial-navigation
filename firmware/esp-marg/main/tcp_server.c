@@ -40,18 +40,24 @@ static uint8_t output[18];
 int16_t acc_data[3] = {0, 0, 0};
 int16_t gyr_data[3] = {0, 0, 0};
 int16_t mag_data[3] = {0, 0, 0};
-int16_t sensor_buffer[9];
+int16_t sensor_buffer[10];
+uint16_t delta_t = 0;
 
 char c = 'a';
+
+int32_t current_timestamp;
+int32_t prev_timestamp;
 
 void read_sensors(void);
 static void do_retransmit(const int sock)
 {
-    int len;
-    char rx_buffer[128];
+    int len = 2;
+    char rx_buffer[10];
 
     do {
         len = recv(sock, rx_buffer, sizeof(rx_buffer) - 1, 0);
+        // rx_buffer[0] = 'r';
+        rx_buffer[len] = NULL;
 
         if (len < 0) {
             ESP_LOGE(TAG, "Error occurred during receiving: errno %d", errno);
@@ -62,7 +68,7 @@ static void do_retransmit(const int sock)
             ESP_LOGI(TAG, "Received %d bytes: %s", len, rx_buffer);
 
             read_sensors();
-            int tx_len = 18;
+            int tx_len = 20;
             int to_write = tx_len; 
 
             while (to_write > 0) {
@@ -193,11 +199,17 @@ static esp_err_t i2c_master_init(void)
 }
 
 void read_sensors(void) {
-    MPU_read_acc(sensor_buffer);
-    MPU_read_gyro(sensor_buffer + 3);
-    HMC_read_mag(sensor_buffer + 6);
+    prev_timestamp = current_timestamp;
+    current_timestamp = xTaskGetTickCount();
+    delta_t = 1000 * (current_timestamp - prev_timestamp) / configTICK_RATE_HZ;
+    ESP_LOGI(TAG, "dt: %d", delta_t);
+    sensor_buffer[0] = delta_t;
+    MPU_read_acc(sensor_buffer + 1);
+    MPU_read_gyro(sensor_buffer + 4);
+    HMC_read_mag(sensor_buffer + 7);
     // for(int i = 0; i < 18; i++) {
-    //     ((uint8_t*)sensor_buffer)[i] = 'x';
+    //     ((uint8_t*)sensor_buffer)[i] = c++;
+    //     c = (c - 'a') % 26 + 'a';
     // }
 }
 

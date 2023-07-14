@@ -1,6 +1,7 @@
 from PyQt5 import QtGui
 from sensor import *
 import sys
+import time
 from PyQt5.QtCore import (
     QFile,
     QLine,
@@ -38,97 +39,69 @@ import pandas as pd
 from functools import partial
 from pyqtgraph import PlotWidget
 import bleak
+import socket
 
 AFS_SEL = 1
+FS_SEL  = 1
 ACC_SCALE_FACTOR = (2**AFS_SEL) / 16384.0
+MAG_SCALE_FACTOR = 2.56
+GYR_SCALE_FACTOR = (2 ** FS_SEL) / 131.0
 
-device_address = "F2:E3:5C:1A:6D:96"
-data_characteristic_uuid = "21370005-2137-2137-2137-213721372137"
-
-
-class Sensor:
-    def __init__(self, device_address, data_characteristic_uuid):
-        self.device_address = device_address
-        self.data_characteristic_uuid = data_characteristic_uuid
-        self.client = None
-        self.latest_data = bytearray()
-
-    async def connect(self):
-        self.client = bleak.BleakClient(self.device_address)
-        await self.client.connect()
-
-    async def disconnect(self):
-        if self.client:
-            await self.client.disconnect()
-            self.client = None
-
-    async def read_sensor_data(self):
-        if self.client:
-            data = await self.client.read_gatt_char(self.data_characteristic_uuid)
-            self.latest_data = bytearray(data)
-
-    def get_latest_data(self):
-        return self.latest_data
-
-
-async def initialize_sensor(device_address, data_characteristic_uuid):
-    sensor = Sensor(device_address, data_characteristic_uuid)
-    await sensor.connect()
-    return sensor
-
-
-async def get_sensor_data(sensor):
-    await sensor.read_sensor_data()
-    return sensor.get_latest_data()
-
-
-async def close_sensor(sensor):
-    await sensor.disconnect()
-
+esp_ip = "192.168.0.201"
+esp_port = 3333
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
 
-        self.fp = 10.0
+        self.fp = 15.0
         self.dt = 1 / self.fp
-        self.sensor = Sensor(device_address, data_characteristic_uuid)
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         ########## WINDOW PROPERTIES ############
         self.set_window_properties()
 
         ############ PLOT AND TABLE ############
-        self.plot_widget = PlotWidget()
+        self.acc_plot_widget = PlotWidget()
+        self.gyr_plot_widget = PlotWidget()
+        self.mag_plot_widget = PlotWidget()
 
         self._sidebar_init()
 
         self.setCentralWidget(QWidget(self))
         self.layout = QHBoxLayout(self.centralWidget())
+        self.plots_layout = QGridLayout()
         self.layout.addLayout(self.sidebar_layout)
-        self.layout.addWidget(self.plot_widget)
-        self.plot_widget.setYRange(-4, 4)
+        self.layout.addLayout(self.plots_layout)
+        self.plots_layout.addWidget(self.acc_plot_widget, 0, 0)
+        self.plots_layout.addWidget(self.gyr_plot_widget, 0, 1)
+        self.plots_layout.addWidget(self.mag_plot_widget, 1, 0)
+
+        self.acc_plot_widget.setYRange(-4, 4)
+        self.gyr_plot_widget.setYRange(-500, 500)
+        self.mag_plot_widget.setYRange(-4, 4)
 
     def _sidebar_init(self):
         ### SENSOR READINGS
         self.reading_label = QLabel("<b>Sensor readings</b>",  self, alignment=Qt.AlignmentFlag.AlignCenter)
 
         self.xlabel = QLabel("X acceleration: ", self)
-        self.xval = QLabel("0.00", self)
+        self.acc_xval = QLabel("0.00", self)
         self.xlayout = QHBoxLayout()
         self.xlayout.addWidget(self.xlabel)
-        self.xlayout.addWidget(self.xval)
+        self.xlayout.addWidget(self.acc_xval)
 
         self.ylabel = QLabel("Y acceleration: ", self)
-        self.yval = QLabel("0.00", self)
+        self.acc_yval = QLabel("0.00", self)
         self.ylayout = QHBoxLayout()
         self.ylayout.addWidget(self.ylabel)
-        self.ylayout.addWidget(self.yval)
+        self.ylayout.addWidget(self.acc_yval)
 
         self.zlabel = QLabel("Z acceleration: ", self)
-        self.zval = QLabel("0.00", self)
+        self.acc_zval = QLabel("0.00", self)
         self.zlayout = QHBoxLayout()
         self.zlayout.addWidget(self.zlabel)
-        self.zlayout.addWidget(self.zval)
+        self.zlayout.addWidget(self.acc_zval)
 
         self.reading_layout = QVBoxLayout(self)
         self.reading_layout.addWidget(self.reading_label)
@@ -139,21 +112,21 @@ class MainWindow(QMainWindow):
         ### /SENSOR READINGS
 
         ### BLUETOOTH
-        self.bt_title = QLabel("<b>Bluetooth</b>", self, alignment=Qt.AlignmentFlag.AlignCenter)
+        self.bt_title = QLabel("<b>TCP</b>", self, alignment=Qt.AlignmentFlag.AlignCenter)
         self.bt_connect_button = QPushButton("Connect", self)
-        self.bt_connect_button.clicked.connect(self.start_ble_connection)
+        self.bt_connect_button.clicked.connect(self.start_tcp_connection)
         self.bt_disconnect_button = QPushButton("Disconnect", self)
 
         self.bt_buttons_layout = QHBoxLayout(self)
         self.bt_buttons_layout.addWidget(self.bt_connect_button)
         self.bt_buttons_layout.addWidget(self.bt_disconnect_button)
-        self.bt_disconnect_button.clicked.connect(self.stop_ble_connection)
-        self.bluetooth_state_label = QLabel("Bluetooth: disconnected", self)
+        self.bt_disconnect_button.clicked.connect(self.stop_tcp_connection)
+        self.tcp_state_label = QLabel("Disconnected", self)
 
         self.bluetooth_layout = QVBoxLayout(self)
         self.bluetooth_layout.addWidget(self.bt_title)
         self.bluetooth_layout.addLayout(self.bt_buttons_layout)
-        self.bluetooth_layout.addWidget(self.bluetooth_state_label)
+        self.bluetooth_layout.addWidget(self.tcp_state_label)
         self.bluetooth_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         ### /BLUETOOTH
 
@@ -179,18 +152,44 @@ class MainWindow(QMainWindow):
         self.pen_y = pg.mkPen(color="#72D22D", width=penwidth)
         self.pen_z = pg.mkPen(color="#2D72D2", width=penwidth)
 
-        self.plot_x = self.plot_widget.plot(pen=self.pen_x, name="X axis")
-        self.plot_y = self.plot_widget.plot(pen=self.pen_y, name="Y axis")
-        self.plot_z = self.plot_widget.plot(pen=self.pen_z, name="Z axis")
+        self.acc_plot_x = self.acc_plot_widget.plot(pen=self.pen_x, name="X axis")
+        self.acc_plot_y = self.acc_plot_widget.plot(pen=self.pen_y, name="Y axis")
+        self.acc_plot_z = self.acc_plot_widget.plot(pen=self.pen_z, name="Z axis")
+
+        self.gyr_plot_x = self.gyr_plot_widget.plot(pen=self.pen_x, name="X axis")
+        self.gyr_plot_y = self.gyr_plot_widget.plot(pen=self.pen_y, name="Y axis")
+        self.gyr_plot_z = self.gyr_plot_widget.plot(pen=self.pen_z, name="Z axis")
+
+        self.mag_plot_x = self.mag_plot_widget.plot(pen=self.pen_x, name="X axis")
+        self.mag_plot_y = self.mag_plot_widget.plot(pen=self.pen_y, name="Y axis")
+        self.mag_plot_z = self.mag_plot_widget.plot(pen=self.pen_z, name="Z axis")
 
         self.time_data = np.arange(0, 5, self.dt)
-        self.data_x = 0 * self.time_data
-        self.data_y = 0 * self.time_data
-        self.data_z = 0 * self.time_data
 
-        self.plot_x.setData(self.time_data, self.data_x)
-        self.plot_y.setData(self.time_data, self.data_y)
-        self.plot_z.setData(self.time_data, self.data_z)
+        self.acc_data_x = 0 * self.time_data
+        self.acc_data_y = 0 * self.time_data
+        self.acc_data_z = 0 * self.time_data
+
+        self.gyr_data_x = 0 * self.time_data
+        self.gyr_data_y = 0 * self.time_data
+        self.gyr_data_z = 0 * self.time_data
+
+        self.mag_data_x = 0 * self.time_data
+        self.mag_data_y = 0 * self.time_data
+        self.mag_data_z = 0 * self.time_data
+
+
+        self.acc_plot_x.setData(self.time_data, self.acc_data_x)
+        self.acc_plot_y.setData(self.time_data, self.acc_data_y)
+        self.acc_plot_z.setData(self.time_data, self.acc_data_z)
+
+        self.gyr_plot_x.setData(self.time_data, self.gyr_data_x)
+        self.gyr_plot_y.setData(self.time_data, self.gyr_data_y)
+        self.gyr_plot_z.setData(self.time_data, self.gyr_data_z)
+
+        self.mag_plot_x.setData(self.time_data, self.mag_data_x)
+        self.mag_plot_y.setData(self.time_data, self.mag_data_y)
+        self.mag_plot_z.setData(self.time_data, self.mag_data_z)
 
     def start_timer(self):
         self.timer = pg.QtCore.QTimer()
@@ -201,58 +200,122 @@ class MainWindow(QMainWindow):
         self.timer.stop()
 
     def update_plots(self):
+        # start = time.time()
+
         txtformat = "{data:8.2f} g"
-        time_last = self.time_data[-1]
-        self.time_data[:-1] = self.time_data[1:]
-        self.time_data[-1] = time_last + self.dt
+        # time_last = self.time_data[-1]
+        # self.time_data[:-1] = self.time_data[1:]
+        # self.time_data[-1] = time_last + self.dt
 
         try:
-            buf = self.loop.run_until_complete(get_sensor_data(self.sensor))
+            # buf = self.loop.run_until_complete(get_sensor_data(self.sensor))
+            self.sock.sendall(b'r')
+            buf = self.sock.recv(20)
+
+
+            delta_t = 0.001 * int.from_bytes(buf[0:2], byteorder='little', signed=False)
+            time_last = self.time_data[-1]
+            self.time_data[:-1] = self.time_data[1:]
+            self.time_data[-1] = time_last + delta_t
+
+
+
             acc_x = ACC_SCALE_FACTOR * int.from_bytes(
-                buf[0:2], byteorder="little", signed=True
-            )
-            acc_y = ACC_SCALE_FACTOR * int.from_bytes(
                 buf[2:4], byteorder="little", signed=True
             )
-            acc_z = ACC_SCALE_FACTOR * int.from_bytes(
+            acc_y = ACC_SCALE_FACTOR * int.from_bytes(
                 buf[4:6], byteorder="little", signed=True
             )
-
-            self.data_x[:-1] = self.data_x[1:]
-            self.data_x[-1] = acc_x
-            self.xval.setText(txtformat.format(data=self.data_x[-1]))
-
-            self.data_y[:-1] = self.data_y[1:]
-            self.data_y[-1] = acc_y
-            self.yval.setText(txtformat.format(data=self.data_y[-1]))
-
-            self.data_z[:-1] = self.data_z[1:]
-            self.data_z[-1] = acc_z
-            self.zval.setText(txtformat.format(data=self.data_z[-1]))
-
-            self.plot_x.setData(self.time_data, self.data_x)
-            self.plot_y.setData(self.time_data, self.data_y)
-            self.plot_z.setData(self.time_data, self.data_z)
-        except bleak.exc.BleakError:
-            print("Device disconnected")
-            self.stop_ble_connection()
-
-    def start_ble_connection(self):
-        try:
-            self.sensor = self.loop.run_until_complete(
-                initialize_sensor(device_address, data_characteristic_uuid)
+            acc_z = ACC_SCALE_FACTOR * int.from_bytes(
+                buf[6:8], byteorder="little", signed=True
             )
-            self.bluetooth_state_label.setText("Bluetooth connected")
+
+            gyr_x = GYR_SCALE_FACTOR * int.from_bytes(
+                buf[8:10], byteorder="little", signed=True
+            )
+            gyr_y = GYR_SCALE_FACTOR * int.from_bytes(
+                buf[10:12], byteorder="little", signed=True
+            )
+            gyr_z = GYR_SCALE_FACTOR * int.from_bytes(
+                buf[12:14], byteorder="little", signed=True
+            )
+
+            mag_x = MAG_SCALE_FACTOR * int.from_bytes(
+                buf[14:16], byteorder="little", signed=True
+            )
+            mag_y = MAG_SCALE_FACTOR * int.from_bytes(
+                buf[16:18], byteorder="little", signed=True
+            )
+            mag_z = MAG_SCALE_FACTOR * int.from_bytes(
+                buf[18:20], byteorder="little", signed=True
+            )
+
+            self.acc_data_x[:-1] = self.acc_data_x[1:]
+            self.acc_data_x[-1] = acc_x
+            self.acc_xval.setText(txtformat.format(data=self.acc_data_x[-1]))
+
+            self.acc_data_y[:-1] = self.acc_data_y[1:]
+            self.acc_data_y[-1] = acc_y
+            self.acc_yval.setText(txtformat.format(data=self.acc_data_y[-1]))
+
+            self.acc_data_z[:-1] = self.acc_data_z[1:]
+            self.acc_data_z[-1] = acc_z
+            self.acc_zval.setText(txtformat.format(data=self.acc_data_z[-1]))
+
+            self.gyr_data_x[:-1] = self.gyr_data_x[1:]
+            self.gyr_data_x[-1] = gyr_x
+            # self.gyr_xval.setText(txtformat.format(data=self.gyr_data_x[-1]))
+
+            self.gyr_data_y[:-1] = self.gyr_data_y[1:]
+            self.gyr_data_y[-1] = gyr_y
+            # self.gyr_yval.setText(txtformat.format(data=self.gyr_data_y[-1]))
+
+            self.gyr_data_z[:-1] = self.gyr_data_z[1:]
+            self.gyr_data_z[-1] = gyr_z
+            # self.gyr_zval.setText(txtformat.format(data=self.gyr_data_z[-1]))
+
+            self.mag_data_x[:-1] = self.mag_data_x[1:]
+            self.mag_data_x[-1] = mag_x
+            # self.mag_xval.setText(txtformat.format(data=self.mag_data_x[-1]))
+
+            self.mag_data_y[:-1] = self.mag_data_y[1:]
+            self.mag_data_y[-1] = mag_y
+            # self.mag_yval.setText(txtformat.format(data=self.mag_data_y[-1]))
+
+            self.mag_data_z[:-1] = self.mag_data_z[1:]
+            self.mag_data_z[-1] = mag_z
+            # self.mag_zval.setText(txtformat.format(data=self.mag_data_z[-1]))
+
+            self.acc_plot_x.setData(self.time_data, self.acc_data_x)
+            self.acc_plot_y.setData(self.time_data, self.acc_data_y)
+            self.acc_plot_z.setData(self.time_data, self.acc_data_z)
+
+            self.gyr_plot_x.setData(self.time_data, self.gyr_data_x)
+            self.gyr_plot_y.setData(self.time_data, self.gyr_data_y)
+            # self.gyr_plot_z.setData(self.time_data, self.gyr_data_z)
+
+            self.mag_plot_x.setData(self.time_data, self.mag_data_x)
+            self.mag_plot_y.setData(self.time_data, self.mag_data_y)
+            self.mag_plot_z.setData(self.time_data, self.mag_data_z)
+        except Exception as ex:
+            print(ex)
+            # self.stop_tcp_connection()
+        # stop = time.time()
+        # print("execution time: {}".format(stop-start))
+
+    def start_tcp_connection(self):
+        try:
+            self.sock.connect((esp_ip, esp_port))
+            self.tcp_state_label.setText(f"Connected to {esp_ip}:{esp_port}")
             self.start_timer()
         except:
             print("Error: coudln't connect to the sensor")
 
-    def stop_ble_connection(self):
+    def stop_tcp_connection(self):
         try:
-            if self.sensor:
-                self.loop.run_until_complete(close_sensor(self.sensor))
-            self.sensor = None
-            self.bluetooth_state_label.setText("Bluetooth disconnected")
+            self.sock.close()
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.tcp_state_label.setText("Disconnected")
             self.stop_timer()
         except:
             print("Device already disonnected")
@@ -260,9 +323,5 @@ class MainWindow(QMainWindow):
     def run(self):
         self.set_window_properties()
         self.init_plots()
-        self.loop = asyncio.get_event_loop()
 
         self.show()
-
-    def closeEvent(self, event) -> None:
-        self.stop_ble_connection()
