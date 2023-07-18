@@ -101,12 +101,29 @@ class MainWindow(QMainWindow):
         self.plots_layout = QGridLayout()
         self.layout.addLayout(self.sidebar_layout)
         self.layout.addLayout(self.plots_layout)
-        self.plots_layout.addWidget(self.acc_plot_widget, 0, 0)
-        self.plots_layout.addWidget(self.gyr_plot_widget, 0, 1)
-        self.plots_layout.addWidget(self.mag_plot_widget, 1, 0)
-        self.plots_layout.addWidget(self.euler_plot_widget, 1, 1)
 
-        self.acc_plot_widget.setYRange(-4*9.81, 4*9.81)
+        self.acc_plot_layout = QVBoxLayout()
+        self.acc_plot_layout.addWidget(QLabel("<b>Accelerometer</b>", self, alignment=Qt.AlignmentFlag.AlignCenter))
+        self.acc_plot_layout.addWidget(self.acc_plot_widget)
+
+        self.gyr_plot_layout = QVBoxLayout()
+        self.gyr_plot_layout.addWidget(QLabel("<b>Gyroscope</b>", self, alignment=Qt.AlignmentFlag.AlignCenter))
+        self.gyr_plot_layout.addWidget(self.gyr_plot_widget)
+
+        self.mag_plot_layout = QVBoxLayout()
+        self.mag_plot_layout.addWidget(QLabel("<b>Magnetometer</b>", self, alignment=Qt.AlignmentFlag.AlignCenter))
+        self.mag_plot_layout.addWidget(self.mag_plot_widget)
+
+        self.euler_plot_layout = QVBoxLayout()
+        self.euler_plot_layout.addWidget(QLabel("<b>Euler angles</b>", self, alignment=Qt.AlignmentFlag.AlignCenter))
+        self.euler_plot_layout.addWidget(self.euler_plot_widget)
+
+        self.plots_layout.addLayout(self.acc_plot_layout, 0, 0)
+        self.plots_layout.addLayout(self.gyr_plot_layout, 0, 1)
+        self.plots_layout.addLayout(self.mag_plot_layout, 1, 0)
+        self.plots_layout.addLayout(self.euler_plot_layout, 1, 1)
+
+        self.acc_plot_widget.setYRange(-2*9.81, 2*9.81)
         self.gyr_plot_widget.setYRange(-6.28, 6.28)
         self.mag_plot_widget.setYRange(-800, 800)
         self.euler_plot_widget.setYRange(-np.pi, np.pi)
@@ -202,7 +219,7 @@ class MainWindow(QMainWindow):
         # self.sidebar_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
     def set_window_properties(self):
-        self.title = "Akcelerometr"
+        self.title = "MARG"
         self.height = 500
         self.width = 1060
 
@@ -230,9 +247,9 @@ class MainWindow(QMainWindow):
         self.mag_plot_y = self.mag_plot_widget.plot(pen=self.pen_y, name="Y axis")
         self.mag_plot_z = self.mag_plot_widget.plot(pen=self.pen_z, name="Z axis")
 
-        self.yaw_plot   = self.euler_plot_widget.plot(pen=self.pen_x, name="Yaw")
+        self.yaw_plot   = self.euler_plot_widget.plot(pen=self.pen_z, name="Yaw")
         self.pitch_plot = self.euler_plot_widget.plot(pen=self.pen_y, name="Pitch")
-        self.roll_plot  = self.euler_plot_widget.plot(pen=self.pen_z, name="Roll")
+        self.roll_plot  = self.euler_plot_widget.plot(pen=self.pen_x, name="Roll")
 
         self.time_data = np.arange(0, 5, self.dt)
 
