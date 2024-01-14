@@ -83,6 +83,7 @@ mag = 1000 * df[['Bx', 'By', 'Bz']].values
 
 madgwick = Madgwick()
 Q = np.tile((1., 0., 0., 0.), (len(gyr), 1))      # Allocation of quaternions
+print(Q.shape)
 for t in range(0, sample_no):
     time_step = time[t] - time[t - 1]
     madgwick.Dt = time_step

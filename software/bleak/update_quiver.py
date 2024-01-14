@@ -26,22 +26,22 @@ def get_acc2():
     _sample_no2 += 1
     return _sample_no2, x[_sample_no2], y[_sample_no2], z[_sample_no2]
 
-def update_3d(i):
-    acc_ax.cla()
-    x, y, z = get_acc()
-    acc_ax.quiver(0, 0, 0, x, 0, 0);
-    acc_ax.quiver(0, 0, 0, 0, y, 0);
-    acc_ax.quiver(0, 0, 0, 0, 0, z);
-    acc_ax.quiver(0, 0, 0, x, y, z, color='red');
+# def update_3d(i):
+#     acc_ax.cla()
+#     x, y, z = get_acc()
+#     acc_ax.quiver(0, 0, 0, x, 0, 0);
+#     acc_ax.quiver(0, 0, 0, 0, y, 0);
+#     acc_ax.quiver(0, 0, 0, 0, 0, z);
+#     acc_ax.quiver(0, 0, 0, x, y, z, color='red');
 
-    acc_ax.set_xlim(-15, 15)
-    acc_ax.set_ylim(-15, 15)
-    acc_ax.set_zlim(-15, 15)
+#     acc_ax.set_xlim(-15, 15)
+#     acc_ax.set_ylim(-15, 15)
+#     acc_ax.set_zlim(-15, 15)
 
-    acc_ax.set_xlabel("X")
-    acc_ax.set_ylabel("Y")
-    acc_ax.set_zlabel("Z")
-    acc_ax.set_title("siema")
+#     acc_ax.set_xlabel("X")
+#     acc_ax.set_ylabel("Y")
+#     acc_ax.set_zlabel("Z")
+#     acc_ax.set_title("siema")
 
 def update_2d(i):
     global ax, ay, az
@@ -132,16 +132,16 @@ def update_2d(i):
 
 if __name__ == "__main__":
     fig = plt.figure()
-    acc_ax = fig.add_subplot(1, 2, 1, projection="3d")
-#    acc_2d  = fig.add_subplot(2, 2, 2)
-#    mag_2d  = fig.add_subplot(2, 2, 4)
-#    gyro_2d = fig.add_subplot(1, 2, 1)
+    # acc_ax = fig.add_subplot(1, 2, 1, projection="3d")
+    acc_2d  = fig.add_subplot(2, 2, 2)
+    mag_2d  = fig.add_subplot(2, 2, 4)
+    gyro_2d = fig.add_subplot(1, 2, 1)
 
     # line_mag_x, = mag_2d.plot([0, 1], [0,1], label="X axis")
     # line_mag_y, = mag_2d.plot([0, 1], [0,1], label="Y axis")
     # line_mag_z, = mag_2d.plot([0, 1], [0,1], label="Z axis")
 
     ani_acc3d = FuncAnimation(fig, update_3d, interval=10)
-    #ani_acc2d = FuncAnimation(fig, update_2d, interval=16.6)
+    # ani_acc2d = FuncAnimation(fig, update_2d, interval=16.6)
 
     plt.show()
